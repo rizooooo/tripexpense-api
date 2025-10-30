@@ -169,3 +169,4 @@
 /Users/darreeell/Documents/projects/trip-api/TripExpenseApi/bin/Debug/net9.0/Swashbuckle.AspNetCore.SwaggerUI.dll
 /Users/darreeell/Documents/projects/trip-api/TripExpenseApi/bin/Debug/net9.0/AutoMapper.Extensions.Microsoft.DependencyInjection.dll
 /Users/darreeell/Documents/projects/trip-api/TripExpenseApi/bin/Debug/net9.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll
+/Users/darreeell/Documents/projects/trip-api/TripExpenseApi/obj/Debug/net9.0/TripExpenseApi.sourcelink.json

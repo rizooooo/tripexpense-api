@@ -530,7 +530,9 @@ namespace TripExpenseApi.Controllers
         }
 
         [HttpPost("join")]
-        public async Task<ActionResult<JoinTripResponse>> JoinTripViaInvite([FromBody] JoinTripDto dto)
+        public async Task<ActionResult<JoinTripResponse>> JoinTripViaInvite(
+            [FromBody] JoinTripDto dto
+        )
         {
             var userId = _authService.GetUserId();
             var trip = await _context
@@ -614,7 +616,8 @@ namespace TripExpenseApi.Controllers
                 TripId = trip.Id,
                 TripName = trip.Name,
                 InviteToken = trip.InviteToken,
-                InviteLink = $"https://yourapp.com/invite/{trip.InviteToken}",
+                InviteLink =
+                    $"https://jolly-glacier-054b5d21e-preview.westus2.3.azurestaticapps.net/join/{trip.InviteToken}",
                 ExpiryDate = trip.InviteTokenExpiry,
                 IsActive = trip.IsInviteLinkActive,
             };
