@@ -136,7 +136,7 @@ namespace TripExpenseApi.Controllers
                 TripId = dto.TripId,
                 Description = dto.Description,
                 Amount = dto.Amount,
-                PaidByUserId = userId,
+                PaidByUserId = dto.PaidByUserId,
                 ExpenseDate = dto.ExpenseDate,
                 Category = dto.Category,
                 SplitType = dto.SplitType,
@@ -162,7 +162,7 @@ namespace TripExpenseApi.Controllers
                             ExpenseId = expense.Id,
                             UserId = memberId,
                             Amount = splitAmount,
-                            IsPaid = memberId == userId
+                            IsPaid = memberId == dto.PaidByUserId,
                         }
                     );
                 }
@@ -185,7 +185,7 @@ namespace TripExpenseApi.Controllers
                             UserId = split.UserId,
                             Amount = split.Amount ?? 0,
                             Percentage = split.Percentage,
-                            IsPaid = split.UserId == userId,
+                            IsPaid = split.UserId == dto.PaidByUserId,
                         }
                     );
                 }
@@ -209,7 +209,7 @@ namespace TripExpenseApi.Controllers
                             UserId = split.UserId,
                             Amount = splitAmount,
                             Percentage = split.Percentage,
-                            IsPaid = split.UserId == userId
+                            IsPaid = split.UserId == dto.PaidByUserId,
                         }
                     );
                 }
