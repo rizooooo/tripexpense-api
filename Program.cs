@@ -33,6 +33,7 @@ builder.Services.AddSwaggerGen();
 
 // ⭐ NEW: Add AuthService
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IInviteCodeService, InviteCodeService>();
 
 // ⭐ NEW: Add JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!";

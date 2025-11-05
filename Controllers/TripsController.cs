@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using TripExpenseApi.Config;
 using TripExpenseApi.Models;
@@ -22,12 +23,18 @@ namespace TripExpenseApi.Controllers
     public class TripsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
         private readonly IAuthService _authService;
 
-        public TripsController(ApplicationDbContext context, IAuthService authService)
+        public TripsController(
+            ApplicationDbContext context,
+            IAuthService authService,
+            IConfiguration configuration
+        )
         {
             _context = context;
             _authService = authService;
+            _configuration = configuration;
         }
 
         [HttpGet]
@@ -433,6 +440,10 @@ namespace TripExpenseApi.Controllers
             return Ok(dashboard);
         }
 
+        // ============================================
+        // TripsController - UPDATE GenerateInviteLink
+        // ============================================
+
         [HttpPost("{id}/invite")]
         public async Task<ActionResult<TripInviteDto>> GenerateInviteLink(
             int id,
@@ -443,7 +454,21 @@ namespace TripExpenseApi.Controllers
             if (trip == null)
                 return NotFound("Trip not found");
 
-            trip.InviteToken = Guid.NewGuid().ToString("N");
+            var inviteCodeService =
+                HttpContext.RequestServices.GetRequiredService<IInviteCodeService>();
+
+            // Generate unique code
+            string inviteCode;
+            do
+            {
+                inviteCode = inviteCodeService.GenerateWordCode();
+            } while (
+                await _context.Trips.AnyAsync(t =>
+                    t.InviteToken == inviteCode && t.IsInviteLinkActive
+                )
+            );
+
+            trip.InviteToken = inviteCode;
 
             if (expiryDays.HasValue && expiryDays.Value > 0)
             {
@@ -458,13 +483,13 @@ namespace TripExpenseApi.Controllers
             trip.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-
+            var clientUrl = _configuration.GetValue<string>("ClientURL");
             var inviteDto = new TripInviteDto
             {
                 TripId = trip.Id,
                 TripName = trip.Name,
                 InviteToken = trip.InviteToken,
-                InviteLink = $"https://jolly-glacier-054b5d21e-preview.westus2.3.azurestaticapps.net/join/{trip.InviteToken}",
+                InviteLink = $"{clientUrl}/join/{trip.InviteToken}", // Shorter URL!
                 ExpiryDate = trip.InviteTokenExpiry,
                 IsActive = trip.IsInviteLinkActive,
             };
@@ -610,14 +635,13 @@ namespace TripExpenseApi.Controllers
 
             if (string.IsNullOrEmpty(trip.InviteToken))
                 return NotFound("No invite link has been generated for this trip");
-
+            var clientURL = _configuration.GetValue<string>("ClientURL");
             var inviteDto = new TripInviteDto
             {
                 TripId = trip.Id,
                 TripName = trip.Name,
                 InviteToken = trip.InviteToken,
-                InviteLink =
-                    $"https://jolly-glacier-054b5d21e-preview.westus2.3.azurestaticapps.net/join/{trip.InviteToken}",
+                InviteLink = $"{clientURL}/join/{trip.InviteToken}",
                 ExpiryDate = trip.InviteTokenExpiry,
                 IsActive = trip.IsInviteLinkActive,
             };
