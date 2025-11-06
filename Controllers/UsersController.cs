@@ -80,7 +80,7 @@ namespace TripExpenseApi.Controllers
                 return BadRequest("Email already exists");
 
             _mapper.Map(dto, user);
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTimeOffset.UtcNow;
 
             await _context.SaveChangesAsync();
 

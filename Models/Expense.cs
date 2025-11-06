@@ -29,7 +29,7 @@ namespace TripExpenseApi.Models
         [ForeignKey("PaidByUserId")]
         public User PaidBy { get; set; }
 
-        public DateTime ExpenseDate { get; set; }
+        public DateTimeOffset ExpenseDate { get; set; } = DateTimeOffset.UtcNow;
 
         [StringLength(50)]
         public string Category { get; set; } // Food, Transport, Accommodation, etc.
@@ -37,9 +37,9 @@ namespace TripExpenseApi.Models
         [StringLength(20)]
         public string SplitType { get; set; } = "Equal"; // Equal, Custom, Percentage
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
-        public DateTime? UpdatedAt { get; set; }
+        public DateTimeOffset? UpdatedAt { get; set; }
 
         // Navigation properties
         public ICollection<ExpenseSplit> Splits { get; set; }

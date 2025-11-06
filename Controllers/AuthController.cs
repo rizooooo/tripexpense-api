@@ -44,7 +44,7 @@ namespace TripExpenseApi.Controllers
                 PhoneNumber = dto.PhoneNumber,
                 Avatar = dto.Name.Substring(0, 1).ToUpper(),
                 PasswordHash = _authService.HashPassword(dto.Password),
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTimeOffset.UtcNow,
                 IsEmailVerified = false,
             };
 
@@ -61,7 +61,7 @@ namespace TripExpenseApi.Controllers
                 Email = user.Email,
                 Avatar = user.Avatar,
                 Token = token,
-                ExpiresAt = DateTime.UtcNow.AddDays(30),
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(30),
             };
 
             return Ok(response);
@@ -85,7 +85,7 @@ namespace TripExpenseApi.Controllers
             }
 
             // Update last login
-            user.LastLoginAt = DateTime.UtcNow;
+            user.LastLoginAt = DateTimeOffset.UtcNow;
             await _context.SaveChangesAsync();
 
             // Generate JWT token
@@ -98,7 +98,7 @@ namespace TripExpenseApi.Controllers
                 Email = user.Email,
                 Avatar = user.Avatar,
                 Token = token,
-                ExpiresAt = DateTime.UtcNow.AddDays(30),
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(30),
             };
 
             return Ok(response);
@@ -125,7 +125,7 @@ namespace TripExpenseApi.Controllers
 
             // Update password
             user.PasswordHash = _authService.HashPassword(dto.NewPassword);
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTimeOffset.UtcNow;
 
             await _context.SaveChangesAsync();
 

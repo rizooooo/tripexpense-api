@@ -15,10 +15,10 @@ namespace TripExpenseApi.Models.Dtos
         public string Description { get; set; }
 
         [Required]
-        public DateTime StartDate { get; set; }
+        public DateTimeOffset StartDate { get; set; }
 
         [Required]
-        public DateTime EndDate { get; set; }
+        public DateTimeOffset EndDate { get; set; }
 
         public List<int> MemberIds { get; set; } = new List<int>();
     }
@@ -28,11 +28,11 @@ namespace TripExpenseApi.Models.Dtos
         public int Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
+        public DateTimeOffset StartDate { get; set; }
+        public DateTimeOffset EndDate { get; set; }
         public int MemberCount { get; set; }
         public decimal TotalExpenses { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
         public List<TripMemberDto> Members { get; set; }
     }
 
@@ -56,15 +56,15 @@ namespace TripExpenseApi.Models.Dtos
         public string Name { get; set; }
         public string Avatar { get; set; }
         public string Role { get; set; }
-        public DateTime JoinedAt { get; set; }
+        public DateTimeOffset JoinedAt { get; set; }
     }
 
     public class TripSummaryDto
     {
         public int Id { get; set; }
         public string Name { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
+        public DateTimeOffset StartDate { get; set; }
+        public DateTimeOffset EndDate { get; set; }
         public int MemberCount { get; set; }
         public decimal TotalExpenses { get; set; }
     }
@@ -78,13 +78,13 @@ namespace TripExpenseApi.Models.Dtos
         public int Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
+        public DateTimeOffset StartDate { get; set; }
+        public DateTimeOffset EndDate { get; set; }
         public int MemberCount { get; set; }
         public decimal TotalSpent { get; set; }
         public decimal YourShare { get; set; }
         public decimal YourBalance { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
         public List<TripMemberDto> Members { get; set; }
     }
 
@@ -92,8 +92,8 @@ namespace TripExpenseApi.Models.Dtos
     {
         public int Id { get; set; }
         public string Name { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
+        public DateTimeOffset StartDate { get; set; }
+        public DateTimeOffset EndDate { get; set; }
         public int MemberCount { get; set; }
         public decimal TotalExpenses { get; set; }
         public decimal YourBalance { get; set; }
@@ -105,7 +105,7 @@ namespace TripExpenseApi.Models.Dtos
         public string TripName { get; set; }
         public string InviteLink { get; set; }
         public string InviteToken { get; set; }
-        public DateTime? ExpiryDate { get; set; }
+        public DateTimeOffset? ExpiryDate { get; set; }
         public bool IsActive { get; set; }
     }
 
@@ -126,8 +126,8 @@ namespace TripExpenseApi.Models.Dtos
         public int TripId { get; set; }
         public string TripName { get; set; }
         public string Description { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
+        public DateTimeOffset StartDate { get; set; }
+        public DateTimeOffset EndDate { get; set; }
         public int MemberCount { get; set; }
         public string CreatedByName { get; set; }
         public bool IsValid { get; set; }

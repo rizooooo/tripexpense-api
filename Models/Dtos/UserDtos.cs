@@ -27,7 +27,7 @@ namespace TripExpenseApi.Models.Dtos
         public string Email { get; set; }
         public string PhoneNumber { get; set; }
         public string Avatar { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
     }
 
     public class UserBalanceDto

@@ -169,7 +169,7 @@ namespace TripExpenseApi.Controllers
             trip.Description = dto.Description;
             trip.StartDate = dto.StartDate;
             trip.EndDate = dto.EndDate;
-            trip.UpdatedAt = DateTime.UtcNow;
+            trip.UpdatedAt = DateTimeOffset.UtcNow;
 
             await _context.SaveChangesAsync();
 
@@ -472,15 +472,15 @@ namespace TripExpenseApi.Controllers
 
             if (expiryDays.HasValue && expiryDays.Value > 0)
             {
-                trip.InviteTokenExpiry = DateTime.UtcNow.AddDays(expiryDays.Value);
+                trip.InviteTokenExpiry = DateTimeOffset.UtcNow.AddDays(expiryDays.Value);
             }
             else
             {
-                trip.InviteTokenExpiry = DateTime.UtcNow.AddDays(7);
+                trip.InviteTokenExpiry = DateTimeOffset.UtcNow.AddDays(7);
             }
 
             trip.IsInviteLinkActive = true;
-            trip.UpdatedAt = DateTime.UtcNow;
+            trip.UpdatedAt = DateTimeOffset.UtcNow;
 
             await _context.SaveChangesAsync();
             var clientUrl = _configuration.GetValue<string>("ClientURL");
@@ -525,7 +525,7 @@ namespace TripExpenseApi.Controllers
                 );
             }
 
-            if (trip.InviteTokenExpiry.HasValue && trip.InviteTokenExpiry.Value < DateTime.UtcNow)
+            if (trip.InviteTokenExpiry.HasValue && trip.InviteTokenExpiry.Value < DateTimeOffset.UtcNow)
             {
                 return Ok(
                     new TripInviteInfoDto
@@ -570,7 +570,7 @@ namespace TripExpenseApi.Controllers
             if (!trip.IsInviteLinkActive)
                 return BadRequest("This invite link has been deactivated");
 
-            if (trip.InviteTokenExpiry.HasValue && trip.InviteTokenExpiry.Value < DateTime.UtcNow)
+            if (trip.InviteTokenExpiry.HasValue && trip.InviteTokenExpiry.Value < DateTimeOffset.UtcNow)
                 return BadRequest("This invite link has expired");
 
             var user = await _context.Users.FindAsync(userId);
@@ -590,7 +590,7 @@ namespace TripExpenseApi.Controllers
                 else
                 {
                     existingMember.IsActive = true;
-                    existingMember.JoinedAt = DateTime.UtcNow;
+                    existingMember.JoinedAt = DateTimeOffset.UtcNow;
                     await _context.SaveChangesAsync();
                     return Ok(new { message = "Successfully rejoined the trip" });
                 }
@@ -601,7 +601,7 @@ namespace TripExpenseApi.Controllers
                 TripId = trip.Id,
                 UserId = userId,
                 Role = "Member",
-                JoinedAt = DateTime.UtcNow,
+                JoinedAt = DateTimeOffset.UtcNow,
                 IsActive = true,
             };
 
@@ -619,7 +619,7 @@ namespace TripExpenseApi.Controllers
                 return NotFound("Trip not found");
 
             trip.IsInviteLinkActive = false;
-            trip.UpdatedAt = DateTime.UtcNow;
+            trip.UpdatedAt = DateTimeOffset.UtcNow;
 
             await _context.SaveChangesAsync();
 

@@ -34,7 +34,7 @@ namespace TripExpenseApi.Models.Dtos
         public int ToUserId { get; set; }
         public string ToUserName { get; set; }
         public decimal Amount { get; set; }
-        public DateTime SettlementDate { get; set; }
+        public DateTimeOffset SettlementDate { get; set; }
         public string Notes { get; set; }
     }
 

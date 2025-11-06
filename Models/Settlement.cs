@@ -30,11 +30,11 @@ namespace TripExpenseApi.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal Amount { get; set; }
 
-        public DateTime SettlementDate { get; set; } = DateTime.UtcNow;
+        public DateTimeOffset SettlementDate { get; set; } = DateTimeOffset.UtcNow;
 
         [StringLength(500)]
         public string Notes { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     }
 }

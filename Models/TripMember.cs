@@ -25,7 +25,7 @@ namespace TripExpenseApi.Models
         [StringLength(50)]
         public string Role { get; set; } = "Member"; // Admin, Member
 
-        public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
+        public DateTimeOffset JoinedAt { get; set; } = DateTimeOffset.UtcNow;
 
         public bool IsActive { get; set; } = true;
     }

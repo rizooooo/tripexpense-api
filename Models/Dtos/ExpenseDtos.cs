@@ -22,9 +22,6 @@ namespace TripExpenseApi.Models.Dtos
         [Required]
         public int PaidByUserId { get; set; }
 
-        [Required]
-        public DateTime ExpenseDate { get; set; }
-
         public string Category { get; set; }
 
         [Required]
@@ -50,11 +47,11 @@ namespace TripExpenseApi.Models.Dtos
         public decimal Amount { get; set; }
         public int PaidByUserId { get; set; }
         public string PaidByName { get; set; }
-        public DateTime ExpenseDate { get; set; }
+        public DateTimeOffset ExpenseDate { get; set; }
         public string Category { get; set; }
         public string SplitType { get; set; }
         public int SplitCount { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
         public List<ExpenseSplitDto> Splits { get; set; }
     }
 
@@ -75,10 +72,8 @@ namespace TripExpenseApi.Models.Dtos
         public string UserAvatar { get; set; }
         public int TripId { get; set; }
         public string TripName { get; set; }
-        public decimal TotalOwes { get; set; }
-        public decimal TotalPaid { get; set; }
         public decimal NetBalance { get; set; }
-        public List<MemberExpenseItemDto> Expenses { get; set; }
+        public List<RunningTransactionItemDto> Transactions { get; set; }
     }
 
     public class MemberExpenseItemDto
@@ -90,8 +85,41 @@ namespace TripExpenseApi.Models.Dtos
         public string PaidByName { get; set; }
         public decimal UserOwes { get; set; }
         public decimal UserPaid { get; set; }
-        public decimal NetAmount { get; set; } // Positive if user gets back, negative if owes
-        public DateTime ExpenseDate { get; set; }
-        public bool IsSettlement { get; set; } = false; // ⭐ NEW: Flag for settlements
+        public decimal NetAmount { get; set; }
+        public DateTimeOffset ExpenseDate { get; set; }
+        public bool IsSettled { get; set; }
+    }
+
+    public class MemberSettlementItemDto
+    {
+        public int SettlementId { get; set; }
+        public decimal Amount { get; set; }
+        public DateTimeOffset SettlementDate { get; set; }
+        public string FromUserName { get; set; }
+        public string ToUserName { get; set; }
+        public string Notes { get; set; }
+        public bool IsUserPaying { get; set; } // true if user is paying, false if receiving
+    }
+
+    public class RunningTransactionItemDto
+    {
+        public DateTimeOffset Date { get; set; }
+        public string Description { get; set; }
+        public string Type { get; set; } // "Expense", "Payment", "Receipt"
+        public decimal Amount { get; set; }
+        public decimal RunningBalance { get; set; }
+        public int TransactionId { get; set; }
+
+        // Expense-specific fields (null for settlements)
+        public int? ExpenseId { get; set; }
+        public string PaidByName { get; set; }
+        public decimal? TotalExpenseAmount { get; set; }
+        public bool IsUserPayer { get; set; }
+
+        // Settlement-specific fields (null for expenses)
+        public int? SettlementId { get; set; }
+        public string FromUserName { get; set; }
+        public string ToUserName { get; set; }
+        public string Notes { get; set; }
     }
 }

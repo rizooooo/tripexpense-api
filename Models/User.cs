@@ -26,9 +26,9 @@ namespace TripExpenseApi.Models
         [StringLength(500)]
         public string Avatar { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
-        public DateTime? UpdatedAt { get; set; }
+        public DateTimeOffset? UpdatedAt { get; set; }
 
         // Navigation properties
         public ICollection<TripMember> TripMemberships { get; set; }
@@ -41,7 +41,7 @@ namespace TripExpenseApi.Models
         [StringLength(255)]
         public string PasswordHash { get; set; }
 
-        public DateTime? LastLoginAt { get; set; }
+        public DateTimeOffset? LastLoginAt { get; set; }
 
         public bool IsEmailVerified { get; set; } = false;
     }

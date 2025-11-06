@@ -19,13 +19,13 @@ namespace TripExpenseApi.Models
         [StringLength(1000)]
         public string Description { get; set; }
 
-        public DateTime StartDate { get; set; }
+        public DateTimeOffset StartDate { get; set; }
 
-        public DateTime EndDate { get; set; }
+        public DateTimeOffset EndDate { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
-        public DateTime? UpdatedAt { get; set; }
+        public DateTimeOffset? UpdatedAt { get; set; }
 
         public int CreatedByUserId { get; set; }
 
@@ -39,7 +39,7 @@ namespace TripExpenseApi.Models
         [StringLength(100)]
         public string? InviteToken { get; set; }
 
-        public DateTime? InviteTokenExpiry { get; set; }
+        public DateTimeOffset? InviteTokenExpiry { get; set; }
 
         public bool IsInviteLinkActive { get; set; } = true;
     }
