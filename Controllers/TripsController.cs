@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using TripExpenseApi.Config;
+using TripExpenseApi.Helpers;
 using TripExpenseApi.Models;
 using TripExpenseApi.Models.Dtos;
 using TripExpenseApi.Services;
@@ -53,6 +54,7 @@ namespace TripExpenseApi.Controllers
                 .Select(t => new TripSummaryDto
                 {
                     Id = t.Id,
+                    Currency = t.Currency,
                     Name = t.Name,
                     StartDate = t.StartDate,
                     EndDate = t.EndDate,
@@ -80,6 +82,7 @@ namespace TripExpenseApi.Controllers
             {
                 Id = trip.Id,
                 Name = trip.Name,
+                Currency = trip.Currency,
                 Description = trip.Description,
                 StartDate = trip.StartDate,
                 EndDate = trip.EndDate,
@@ -118,6 +121,7 @@ namespace TripExpenseApi.Controllers
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
                 CreatedByUserId = userId,
+                Currency = dto.Currency,
             };
 
             _context.Trips.Add(trip);
@@ -168,6 +172,7 @@ namespace TripExpenseApi.Controllers
             trip.Name = dto.Name;
             trip.Description = dto.Description;
             trip.StartDate = dto.StartDate;
+            trip.Currency = dto.Currency;
             trip.EndDate = dto.EndDate;
             trip.UpdatedAt = DateTimeOffset.UtcNow;
 
@@ -263,6 +268,7 @@ namespace TripExpenseApi.Controllers
                 .Select(kvp => new UserBalanceDto
                 {
                     UserId = kvp.Key,
+                    Currency = trip.Currency,
                     Name = trip.Members.First(m => m.UserId == kvp.Key).User.Name,
                     Avatar = trip.Members.First(m => m.UserId == kvp.Key).User.Avatar,
                     Balance = kvp.Value,
@@ -324,6 +330,7 @@ namespace TripExpenseApi.Controllers
             {
                 Id = trip.Id,
                 Name = trip.Name,
+                Currency = trip.Currency,
                 Description = trip.Description,
                 StartDate = trip.StartDate,
                 EndDate = trip.EndDate,
@@ -349,6 +356,10 @@ namespace TripExpenseApi.Controllers
             return Ok(tripDetail);
         }
 
+        // ============================================
+        // TripsController - UPDATE GetUserDashboard
+        // ============================================
+
         [HttpGet("user/{userId}/dashboard")]
         public async Task<ActionResult<UserDashboardDto>> GetUserDashboard()
         {
@@ -364,14 +375,14 @@ namespace TripExpenseApi.Controllers
                 .Where(t => t.Members.Any(m => m.UserId == userId && m.IsActive))
                 .ToListAsync();
 
-            decimal overallBalance = 0;
-            decimal totalSpent = 0;
-            decimal totalOwed = 0;
-
+            // ⭐ Group trips by currency
+            var currencyBalances = new Dictionary<string, CurrencyBalanceDto>();
             var recentTrips = new List<TripSummaryWithBalanceDto>();
 
             foreach (var trip in userTrips)
             {
+                var currency = trip.Currency ?? "PHP"; // Default to PHP
+
                 var amountPaid = trip
                     .Expenses.Where(e => e.PaidByUserId == userId)
                     .Sum(e => e.Amount);
@@ -383,7 +394,7 @@ namespace TripExpenseApi.Controllers
 
                 var tripBalance = amountPaid - amountOwed;
 
-                // ⭐ NEW: Apply settlements for this trip
+                // Apply settlements
                 var settlements = await _context
                     .Settlements.Where(s =>
                         s.TripId == trip.Id && (s.FromUserId == userId || s.ToUserId == userId)
@@ -402,13 +413,27 @@ namespace TripExpenseApi.Controllers
                     }
                 }
 
-                overallBalance += tripBalance;
-                totalSpent += amountPaid;
+                // ⭐ Accumulate by currency
+                if (!currencyBalances.ContainsKey(currency))
+                {
+                    currencyBalances[currency] = new CurrencyBalanceDto
+                    {
+                        Currency = currency,
+                        CurrencySymbol = CurrencyHelper.GetSymbol(currency),
+                        Balance = 0,
+                        TotalSpent = 0,
+                        TotalOwed = 0,
+                        TripCount = 0,
+                    };
+                }
 
+                currencyBalances[currency].Balance += tripBalance;
+                currencyBalances[currency].TotalSpent += amountPaid;
                 if (tripBalance < 0)
                 {
-                    totalOwed += Math.Abs(tripBalance);
+                    currencyBalances[currency].TotalOwed += Math.Abs(tripBalance);
                 }
+                currencyBalances[currency].TripCount++;
 
                 recentTrips.Add(
                     new TripSummaryWithBalanceDto
@@ -419,7 +444,9 @@ namespace TripExpenseApi.Controllers
                         EndDate = trip.EndDate,
                         MemberCount = trip.Members.Count(m => m.IsActive),
                         TotalExpenses = trip.Expenses.Sum(e => e.Amount),
-                        YourBalance = tripBalance, // Now includes settlements!
+                        YourBalance = tripBalance,
+                        Currency = currency,
+                        CurrencySymbol = CurrencyHelper.GetSymbol(currency),
                     }
                 );
             }
@@ -430,10 +457,13 @@ namespace TripExpenseApi.Controllers
                 Name = user.Name,
                 Email = user.Email,
                 Avatar = user.Avatar,
-                OverallBalance = overallBalance, // Now includes settlements!
+                CurrencyBalances = currencyBalances
+                    .Values.OrderByDescending(c => c.TripCount)
+                    .ToList(),
+                OverallBalance = currencyBalances.Values.FirstOrDefault()?.Balance ?? 0, // Backward compatibility
                 TotalTrips = userTrips.Count,
-                TotalSpent = totalSpent,
-                TotalOwed = totalOwed,
+                TotalSpent = currencyBalances.Values.Sum(c => c.TotalSpent),
+                TotalOwed = currencyBalances.Values.Sum(c => c.TotalOwed),
                 RecentTrips = recentTrips.OrderByDescending(t => t.StartDate).Take(10).ToList(),
             };
 
@@ -525,7 +555,10 @@ namespace TripExpenseApi.Controllers
                 );
             }
 
-            if (trip.InviteTokenExpiry.HasValue && trip.InviteTokenExpiry.Value < DateTimeOffset.UtcNow)
+            if (
+                trip.InviteTokenExpiry.HasValue
+                && trip.InviteTokenExpiry.Value < DateTimeOffset.UtcNow
+            )
             {
                 return Ok(
                     new TripInviteInfoDto
@@ -570,7 +603,10 @@ namespace TripExpenseApi.Controllers
             if (!trip.IsInviteLinkActive)
                 return BadRequest("This invite link has been deactivated");
 
-            if (trip.InviteTokenExpiry.HasValue && trip.InviteTokenExpiry.Value < DateTimeOffset.UtcNow)
+            if (
+                trip.InviteTokenExpiry.HasValue
+                && trip.InviteTokenExpiry.Value < DateTimeOffset.UtcNow
+            )
                 return BadRequest("This invite link has expired");
 
             var user = await _context.Users.FindAsync(userId);

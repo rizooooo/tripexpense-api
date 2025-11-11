@@ -29,6 +29,7 @@ namespace TripExpenseApi.Models.Dtos
     {
         public int Id { get; set; }
         public int TripId { get; set; }
+        public string Currency { get; set; }
         public int FromUserId { get; set; }
         public string FromUserName { get; set; }
         public int ToUserId { get; set; }

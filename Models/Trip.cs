@@ -16,6 +16,8 @@ namespace TripExpenseApi.Models
         [StringLength(200)]
         public string Name { get; set; }
 
+        public string Currency { get; set; }
+
         [StringLength(1000)]
         public string Description { get; set; }
 

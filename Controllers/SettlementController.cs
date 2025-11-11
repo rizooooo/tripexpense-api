@@ -46,6 +46,7 @@ namespace TripExpenseApi.Controllers
                 {
                     Id = s.Id,
                     TripId = s.TripId,
+                    Currency = s.Trip.Currency,
                     FromUserId = s.FromUserId,
                     FromUserName = s.FromUser.Name,
                     ToUserId = s.ToUserId,

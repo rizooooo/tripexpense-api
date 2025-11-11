@@ -14,6 +14,8 @@ namespace TripExpenseApi.Models.Dtos
 
         public string Description { get; set; }
 
+        public string Currency { get; set; }
+
         [Required]
         public DateTimeOffset StartDate { get; set; }
 
@@ -28,6 +30,7 @@ namespace TripExpenseApi.Models.Dtos
         public int Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
+        public string Currency { get; set; }
         public DateTimeOffset StartDate { get; set; }
         public DateTimeOffset EndDate { get; set; }
         public int MemberCount { get; set; }
@@ -36,12 +39,28 @@ namespace TripExpenseApi.Models.Dtos
         public List<TripMemberDto> Members { get; set; }
     }
 
+    public class CurrencyBalanceDto
+    {
+        public string Currency { get; set; }
+        public string CurrencySymbol { get; set; }
+        public decimal Balance { get; set; }
+        public decimal TotalSpent { get; set; }
+        public decimal TotalOwed { get; set; }
+        public int TripCount { get; set; }
+    }
+
     public class UserDashboardDto
     {
         public int UserId { get; set; }
         public string Name { get; set; }
         public string Email { get; set; }
         public string Avatar { get; set; }
+
+        // ⭐ NEW: Per-currency balances
+        public List<CurrencyBalanceDto> CurrencyBalances { get; set; }
+
+        // Keep for backward compatibility (can be removed later)
+        [Obsolete("Use CurrencyBalances instead")]
         public decimal OverallBalance { get; set; }
         public int TotalTrips { get; set; }
         public decimal TotalSpent { get; set; }
@@ -63,6 +82,7 @@ namespace TripExpenseApi.Models.Dtos
     {
         public int Id { get; set; }
         public string Name { get; set; }
+        public string Currency { get; set; }
         public DateTimeOffset StartDate { get; set; }
         public DateTimeOffset EndDate { get; set; }
         public int MemberCount { get; set; }
@@ -78,6 +98,7 @@ namespace TripExpenseApi.Models.Dtos
         public int Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
+        public string Currency { get; set; }
         public DateTimeOffset StartDate { get; set; }
         public DateTimeOffset EndDate { get; set; }
         public int MemberCount { get; set; }
@@ -97,6 +118,9 @@ namespace TripExpenseApi.Models.Dtos
         public int MemberCount { get; set; }
         public decimal TotalExpenses { get; set; }
         public decimal YourBalance { get; set; }
+
+        public string Currency { get; set; } // ⭐ NEW
+        public string CurrencySymbol { get; set; } // ⭐ NEW
     }
 
     public class TripInviteDto

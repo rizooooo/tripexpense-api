@@ -43,6 +43,7 @@ namespace TripExpenseApi.Models.Dtos
     {
         public int Id { get; set; }
         public int TripId { get; set; }
+        public string Currency { get; set; }
         public string Description { get; set; }
         public decimal Amount { get; set; }
         public int PaidByUserId { get; set; }
@@ -72,6 +73,7 @@ namespace TripExpenseApi.Models.Dtos
         public string UserAvatar { get; set; }
         public int TripId { get; set; }
         public string TripName { get; set; }
+        public string Currency { get; set; }
         public decimal NetBalance { get; set; }
         public List<RunningTransactionItemDto> Transactions { get; set; }
     }

@@ -49,6 +49,7 @@ namespace TripExpenseApi.Controllers
                 {
                     Id = e.Id,
                     TripId = e.TripId,
+                    Currency = e.Trip.Currency,
                     Description = e.Description,
                     Amount = e.Amount,
                     PaidByUserId = e.PaidByUserId,
@@ -91,6 +92,7 @@ namespace TripExpenseApi.Controllers
             var expenseDto = new ExpenseDto
             {
                 Id = expense.Id,
+                Currency = expense.Trip.Currency,
                 TripId = expense.TripId,
                 Description = expense.Description,
                 Amount = expense.Amount,
@@ -592,6 +594,7 @@ namespace TripExpenseApi.Controllers
             {
                 UserId = userId,
                 UserName = user.Name,
+                Currency = trip.Currency,
                 UserAvatar = user.Avatar,
                 TripId = tripId,
                 TripName = trip.Name,
@@ -687,6 +690,7 @@ namespace TripExpenseApi.Controllers
             {
                 Id = expense.Id,
                 TripId = expense.TripId,
+                Currency = expense.Trip.Currency,
                 Description = expense.Description,
                 Amount = expense.Amount,
                 PaidByUserId = expense.PaidByUserId,
