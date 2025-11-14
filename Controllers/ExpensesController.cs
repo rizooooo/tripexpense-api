@@ -89,10 +89,46 @@ namespace TripExpenseApi.Controllers
             if (expense == null)
                 return NotFound();
 
+            var hasSettlements = await _context.Settlements.AnyAsync(s =>
+                s.TripId == expense.TripId && s.CreatedAt >= expense.CreatedAt
+            );
+
+            // var expenseDto = new ExpenseDto
+            // {
+            //     Id = expense.Id,
+            //     Currency = expense.Trip.Currency,
+            //     TripId = expense.TripId,
+            //     Description =
+            //         expense.SplitType == "PaidFor"
+            //             ? $"{expense.Description} (Paid for others)"
+            //             : expense.Description,
+            //     Amount = expense.Amount,
+            //     PaidByUserId = expense.PaidByUserId,
+            //     PaidByName = expense.PaidBy.Name,
+            //     ExpenseDate = expense.ExpenseDate,
+            //     Category = expense.Category,
+            //     SplitType = expense.SplitType,
+            //     SplitCount = expense.Splits.Count,
+            //     CreatedAt = expense.CreatedAt,
+            //     Splits =
+            //         expense
+            //             .Splits.Select(s => new ExpenseSplitDto
+            //             {
+            //                 Id = s.Id,
+            //                 UserId = s.UserId,
+            //                 UserName = s.User.Name,
+            //                 Amount = s.Amount,
+            //                 Percentage = s.Percentage,
+            //                 IsPaid = s.IsPaid,
+            //             })
+            //             .ToList() ?? new List<ExpenseSplitDto>(),
+            // };
+
             var expenseDto = new ExpenseDto
             {
                 Id = expense.Id,
-                Currency = expense.Trip.Currency,
+                // Use ?. for navigation properties that might be null
+                Currency = expense.Trip?.Currency,
                 TripId = expense.TripId,
                 Description =
                     expense.SplitType == "PaidFor"
@@ -100,25 +136,30 @@ namespace TripExpenseApi.Controllers
                         : expense.Description,
                 Amount = expense.Amount,
                 PaidByUserId = expense.PaidByUserId,
-                PaidByName = expense.PaidBy.Name,
+                // Use ?. for navigation properties that might be null
+                PaidByName = expense.PaidBy?.Name,
                 ExpenseDate = expense.ExpenseDate,
                 Category = expense.Category,
                 SplitType = expense.SplitType,
-                SplitCount = expense.Splits.Count,
+                // Use ?.Count and ?? 0 for a potentially null collection
+                SplitCount = expense.Splits?.Count ?? 0,
                 CreatedAt = expense.CreatedAt,
-                Splits = expense
-                    .Splits.Select(s => new ExpenseSplitDto
-                    {
-                        Id = s.Id,
-                        UserId = s.UserId,
-                        UserName = s.User.Name,
-                        Amount = s.Amount,
-                        Percentage = s.Percentage,
-                        IsPaid = s.IsPaid,
-                    })
-                    .ToList(),
+                HasSettlements = hasSettlements,
+                // Use ?.Select and ?? new List<ExpenseSplitDto>() for the collection itself
+                Splits =
+                    expense
+                        .Splits?.Select(s => new ExpenseSplitDto
+                        {
+                            Id = s.Id,
+                            UserId = s.UserId,
+                            // Use ?. for navigation properties in the loop
+                            UserName = s.User?.Name,
+                            Amount = s.Amount,
+                            Percentage = s.Percentage,
+                            IsPaid = s.IsPaid,
+                        })
+                        .ToList() ?? new List<ExpenseSplitDto>(), // Ensures Splits is never null
             };
-
             return Ok(expenseDto);
         }
 

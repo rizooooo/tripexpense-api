@@ -54,6 +54,7 @@ namespace TripExpenseApi.Models.Dtos
         public int SplitCount { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
         public List<ExpenseSplitDto> Splits { get; set; }
+        public bool HasSettlements { get; set; }
     }
 
     public class ExpenseSplitDto
