@@ -360,7 +360,7 @@ namespace TripExpenseApi.Controllers
         // TripsController - UPDATE GetUserDashboard
         // ============================================
 
-        [HttpGet("user/{userId}/dashboard")]
+        [HttpGet("user/dashboard")]
         public async Task<ActionResult<UserDashboardDto>> GetUserDashboard()
         {
             var userId = _authService.GetUserId();

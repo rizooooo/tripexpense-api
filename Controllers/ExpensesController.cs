@@ -94,7 +94,10 @@ namespace TripExpenseApi.Controllers
                 Id = expense.Id,
                 Currency = expense.Trip.Currency,
                 TripId = expense.TripId,
-                Description = expense.Description,
+                Description =
+                    expense.SplitType == "PaidFor"
+                        ? $"{expense.Description} (Paid for others)"
+                        : expense.Description,
                 Amount = expense.Amount,
                 PaidByUserId = expense.PaidByUserId,
                 PaidByName = expense.PaidBy.Name,
@@ -165,6 +168,35 @@ namespace TripExpenseApi.Controllers
                             UserId = memberId,
                             Amount = splitAmount,
                             IsPaid = memberId == dto.PaidByUserId,
+                        }
+                    );
+                }
+            }
+            else if (dto.SplitType == "PaidFor" && dto.Splits != null)
+            {
+                // NEW: "Paid For" mode - Payer covers expense for specific people
+                var paidForUserIds = dto
+                    .Splits.Where(s => s.Amount > 0)
+                    .Select(s => s.UserId)
+                    .ToList();
+
+                if (!paidForUserIds.Any())
+                    return BadRequest("Must specify at least one person this was paid for");
+
+                var splitAmount = dto.Amount / paidForUserIds.Count;
+
+                foreach (var paidForUserId in paidForUserIds)
+                {
+                    if (!trip.Members.Any(m => m.UserId == paidForUserId && m.IsActive))
+                        return BadRequest($"User {paidForUserId} is not a member of this trip");
+
+                    _context.ExpenseSplits.Add(
+                        new ExpenseSplit
+                        {
+                            ExpenseId = expense.Id,
+                            UserId = paidForUserId,
+                            Amount = splitAmount,
+                            IsPaid = paidForUserId == dto.PaidByUserId, // Usually false since payer is covering for them
                         }
                     );
                 }
@@ -269,6 +301,31 @@ namespace TripExpenseApi.Controllers
                             UserId = memberId,
                             Amount = splitAmount,
                             IsPaid = memberId == userId,
+                        }
+                    );
+                }
+            }
+            else if (dto.SplitType == "PaidFor" && dto.Splits != null)
+            {
+                var paidForUserIds = dto
+                    .Splits.Where(s => s.Amount > 0)
+                    .Select(s => s.UserId)
+                    .ToList();
+
+                if (!paidForUserIds.Any())
+                    return BadRequest("Must specify at least one person this was paid for");
+
+                var splitAmount = dto.Amount / paidForUserIds.Count;
+
+                foreach (var paidForUserId in paidForUserIds)
+                {
+                    _context.ExpenseSplits.Add(
+                        new ExpenseSplit
+                        {
+                            ExpenseId = expense.Id,
+                            UserId = paidForUserId,
+                            Amount = splitAmount,
+                            IsPaid = paidForUserId == dto.PaidByUserId,
                         }
                     );
                 }
@@ -476,6 +533,10 @@ namespace TripExpenseApi.Controllers
         // ExpensesController - ENHANCED GetMemberExpenseBreakdown
         // ============================================
 
+        // ============================================
+        // FIX: GetMemberExpenseBreakdown - Include ALL relevant expenses
+        // ============================================
+
         [HttpGet("member/{userId}/trip/{tripId}/breakdown")]
         public async Task<ActionResult<MemberExpenseBreakdownDto>> GetMemberExpenseBreakdown(
             int userId,
@@ -491,12 +552,12 @@ namespace TripExpenseApi.Controllers
                 .ThenInclude(e => e.PaidBy)
                 .Include(t => t.Expenses)
                 .ThenInclude(e => e.Splits)
+                .ThenInclude(s => s.User)
                 .FirstOrDefaultAsync(t => t.Id == tripId);
 
             if (trip == null)
                 return NotFound("Trip not found");
 
-            // Get all settlements for this user in this trip
             var settlements = await _context
                 .Settlements.Include(s => s.FromUser)
                 .Include(s => s.ToUser)
@@ -505,44 +566,73 @@ namespace TripExpenseApi.Controllers
 
             var allTransactions = new List<RunningTransactionItemDto>();
 
-            // --- 1. Add Expenses as Transactions ---
-            foreach (var expense in trip.Expenses.Where(e => e.Splits.Any(s => s.UserId == userId)))
+            // ⭐ FIX: Include expenses where user is EITHER in splits OR is the payer
+            var relevantExpenses = trip
+                .Expenses.Where(e =>
+                    e.Splits.Any(s => s.UserId == userId)
+                    || // User has a split
+                    e.PaidByUserId == userId // OR user paid
+                )
+                .ToList();
+
+            foreach (var expense in relevantExpenses)
             {
-                var userSplit = expense.Splits.First(s => s.UserId == userId);
-                var userOwes = userSplit.Amount;
+                // Check if user has a split (might not if they only paid)
+                var userSplit = expense.Splits.FirstOrDefault(s => s.UserId == userId);
+                var userOwes = userSplit?.Amount ?? 0; // 0 if no split
                 var userPaid = expense.PaidByUserId == userId ? expense.Amount : 0;
                 var netAmount = userPaid - userOwes;
 
+                // Better description for "PaidFor" expenses
+                string description = expense.Description;
+                string additionalInfo = "";
+
+                if (expense.SplitType == "PaidFor")
+                {
+                    if (expense.PaidByUserId == userId)
+                    {
+                        // User paid for others
+                        var paidForUsers = expense.Splits.Select(s => s.User.Name).ToList();
+
+                        if (paidForUsers.Any())
+                        {
+                            additionalInfo = $"Paid for: {string.Join(", ", paidForUsers)}";
+                        }
+                    }
+                    else
+                    {
+                        // Someone paid for this user
+                        additionalInfo = $"{expense.PaidBy.Name} paid for you";
+                    }
+                }
+
                 var transaction = new RunningTransactionItemDto
                 {
-                    Date = expense.ExpenseDate,
+                    Date = expense.CreatedAt,
                     Description = expense.Description,
                     Type = "Expense",
                     Amount = netAmount,
                     TransactionId = expense.Id,
 
-                    // Expense-specific
                     ExpenseId = expense.Id,
                     PaidByName = expense.PaidBy.Name,
                     TotalExpenseAmount = expense.Amount,
                     IsUserPayer = expense.PaidByUserId == userId,
 
-                    // Nulls for settlement fields
+                    Notes = additionalInfo,
+
                     SettlementId = null,
                     FromUserName = null,
                     ToUserName = null,
-                    Notes = null,
                 };
 
                 allTransactions.Add(transaction);
             }
 
-            // --- 2. Add Settlements as Transactions ---
+            // --- 2. Add Settlements (unchanged) ---
             foreach (var settlement in settlements)
             {
                 bool isUserPaying = settlement.FromUserId == userId;
-
-                // Positive when user pays (reduces debt), Negative when user receives (reduces credit)
                 var amount = isUserPaying ? settlement.Amount : -settlement.Amount;
 
                 var transaction = new RunningTransactionItemDto
@@ -555,13 +645,11 @@ namespace TripExpenseApi.Controllers
                     Amount = amount,
                     TransactionId = settlement.Id,
 
-                    // Settlement-specific
                     SettlementId = settlement.Id,
                     FromUserName = settlement.FromUser.Name,
                     ToUserName = settlement.ToUser.Name,
                     Notes = settlement.Notes,
 
-                    // Nulls for expense fields
                     ExpenseId = null,
                     PaidByName = null,
                     TotalExpenseAmount = null,
@@ -571,13 +659,18 @@ namespace TripExpenseApi.Controllers
                 allTransactions.Add(transaction);
             }
 
-            // --- 3. Sort by Date (Latest First) and Calculate Running Balance ---
+            // --- 3. Sort and Calculate Running Balance ---
             var sortedTransactions = allTransactions
                 .OrderByDescending(t => t.Date)
-                .ThenByDescending(t => t.TransactionId)
+                .ThenByDescending(t =>
+                {
+                    if (t.Type == "Payment" || t.Type == "Receipt")
+                        return (t.SettlementId ?? 0) + 1000000;
+                    else
+                        return t.ExpenseId ?? 0;
+                })
                 .ToList();
 
-            // Calculate running balance from oldest to newest, then reverse
             var transactionsOldestFirst = sortedTransactions.AsEnumerable().Reverse().ToList();
             decimal runningBalance = 0;
 
@@ -587,19 +680,17 @@ namespace TripExpenseApi.Controllers
                 transaction.RunningBalance = runningBalance;
             }
 
-            // Now sortedTransactions has running balances calculated correctly
             var finalNetBalance = runningBalance;
 
             var breakdown = new MemberExpenseBreakdownDto
             {
                 UserId = userId,
                 UserName = user.Name,
-                Currency = trip.Currency,
                 UserAvatar = user.Avatar,
                 TripId = tripId,
                 TripName = trip.Name,
                 NetBalance = finalNetBalance,
-                Transactions = sortedTransactions, // Already sorted latest first
+                Transactions = sortedTransactions,
             };
 
             return Ok(breakdown);
