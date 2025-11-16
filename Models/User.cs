@@ -44,5 +44,10 @@ namespace TripExpenseApi.Models
         public DateTimeOffset? LastLoginAt { get; set; }
 
         public bool IsEmailVerified { get; set; } = false;
+
+        [StringLength(500)]
+        public string? RefreshToken { get; set; }
+
+        public DateTimeOffset? RefreshTokenExpiry { get; set; }
     }
 }

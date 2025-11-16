@@ -51,8 +51,14 @@ namespace TripExpenseApi.Controllers
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            // Generate JWT token
+            // Generate JWT token and refresh token
             var token = _authService.GenerateJwtToken(user.Id, user.Email, user.Name);
+            var refreshToken = _authService.GenerateRefreshToken();
+
+            // Store refresh token
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiry = DateTimeOffset.UtcNow.AddDays(7);
+            await _context.SaveChangesAsync();
 
             var response = new AuthResponseDto
             {
@@ -61,6 +67,7 @@ namespace TripExpenseApi.Controllers
                 Email = user.Email,
                 Avatar = user.Avatar,
                 Token = token,
+                RefreshToken = refreshToken,
                 ExpiresAt = DateTimeOffset.UtcNow.AddDays(30),
             };
 
@@ -86,10 +93,15 @@ namespace TripExpenseApi.Controllers
 
             // Update last login
             user.LastLoginAt = DateTimeOffset.UtcNow;
-            await _context.SaveChangesAsync();
 
-            // Generate JWT token
+            // Generate JWT token and refresh token
             var token = _authService.GenerateJwtToken(user.Id, user.Email, user.Name);
+            var refreshToken = _authService.GenerateRefreshToken();
+
+            // Store refresh token
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiry = DateTimeOffset.UtcNow.AddDays(7);
+            await _context.SaveChangesAsync();
 
             var response = new AuthResponseDto
             {
@@ -98,6 +110,7 @@ namespace TripExpenseApi.Controllers
                 Email = user.Email,
                 Avatar = user.Avatar,
                 Token = token,
+                RefreshToken = refreshToken,
                 ExpiresAt = DateTimeOffset.UtcNow.AddDays(30),
             };
 
@@ -181,6 +194,49 @@ namespace TripExpenseApi.Controllers
             {
                 return Unauthorized(new { message = "Invalid token" });
             }
+        }
+
+        [HttpPost("refresh")]
+        public async Task<ActionResult<AuthResponseDto>> RefreshToken(RefreshTokenDto dto)
+        {
+            // Find user by refresh token
+            var user = await _context.Users.FirstOrDefaultAsync(u =>
+                u.RefreshToken == dto.RefreshToken
+            );
+
+            if (user == null)
+            {
+                return Unauthorized(new { message = "Invalid refresh token" });
+            }
+
+            // Check if refresh token is expired
+            if (user.RefreshTokenExpiry == null || user.RefreshTokenExpiry < DateTimeOffset.UtcNow)
+            {
+                return Unauthorized(new { message = "Refresh token expired" });
+            }
+
+            // Generate new JWT token and refresh token
+            var token = _authService.GenerateJwtToken(user.Id, user.Email, user.Name);
+            var newRefreshToken = _authService.GenerateRefreshToken();
+
+            // Update refresh token in database
+            user.RefreshToken = newRefreshToken;
+            user.RefreshTokenExpiry = DateTimeOffset.UtcNow.AddDays(7);
+            user.LastLoginAt = DateTimeOffset.UtcNow;
+            await _context.SaveChangesAsync();
+
+            var response = new AuthResponseDto
+            {
+                UserId = user.Id,
+                Name = user.Name,
+                Email = user.Email,
+                Avatar = user.Avatar,
+                Token = token,
+                RefreshToken = newRefreshToken,
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(30),
+            };
+
+            return Ok(response);
         }
     }
 }

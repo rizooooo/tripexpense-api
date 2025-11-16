@@ -48,6 +48,7 @@ namespace TripExpenseApi.Controllers
 
             query = query.Where(t =>
                 t.Members.Any(m => m.UserId == _authService.GetUserId() && m.IsActive)
+                && !t.IsArchived
             );
 
             var trips = await query
@@ -372,7 +373,7 @@ namespace TripExpenseApi.Controllers
                 .Trips.Include(t => t.Members)
                 .Include(t => t.Expenses)
                 .ThenInclude(e => e.Splits)
-                .Where(t => t.Members.Any(m => m.UserId == userId && m.IsActive))
+                .Where(t => t.Members.Any(m => m.UserId == userId && m.IsActive) && !t.IsArchived)
                 .ToListAsync();
 
             // ⭐ Group trips by currency
@@ -683,6 +684,82 @@ namespace TripExpenseApi.Controllers
             };
 
             return Ok(inviteDto);
+        }
+
+        [HttpPost("{id}/archive")]
+        public async Task<IActionResult> ArchiveTrip(int id)
+        {
+            var trip = await _context.Trips.FindAsync(id);
+            if (trip == null)
+                return NotFound("Trip not found");
+
+            // Check if user is a member of the trip
+            var userId = _authService.GetUserId();
+            var isMember = await _context.TripMembers.AnyAsync(tm =>
+                tm.TripId == id && tm.UserId == userId && tm.IsActive
+            );
+
+            if (!isMember)
+                return Forbid("You are not a member of this trip");
+
+            trip.IsArchived = true;
+            trip.UpdatedAt = DateTimeOffset.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Trip archived successfully" });
+        }
+
+        [HttpPost("{id}/unarchive")]
+        public async Task<IActionResult> UnarchiveTrip(int id)
+        {
+            var trip = await _context.Trips.FindAsync(id);
+            if (trip == null)
+                return NotFound("Trip not found");
+
+            // Check if user is a member of the trip
+            var userId = _authService.GetUserId();
+            var isMember = await _context.TripMembers.AnyAsync(tm =>
+                tm.TripId == id && tm.UserId == userId && tm.IsActive
+            );
+
+            if (!isMember)
+                return Forbid("You are not a member of this trip");
+
+            trip.IsArchived = false;
+            trip.UpdatedAt = DateTimeOffset.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Trip unarchived successfully" });
+        }
+
+        [HttpGet("archived")]
+        public async Task<ActionResult<IEnumerable<TripSummaryDto>>> GetArchivedTrips()
+        {
+            var userId = _authService.GetUserId();
+            
+            var archivedTrips = await _context
+                .Trips.Include(t => t.Members)
+                .Include(t => t.Expenses)
+                .Where(t =>
+                    t.Members.Any(m => m.UserId == userId && m.IsActive)
+                    && t.IsArchived
+                )
+                .Select(t => new TripSummaryDto
+                {
+                    Id = t.Id,
+                    Currency = t.Currency,
+                    Name = t.Name,
+                    StartDate = t.StartDate,
+                    EndDate = t.EndDate,
+                    MemberCount = t.Members.Count(m => m.IsActive),
+                    TotalExpenses = t.Expenses.Sum(e => e.Amount),
+                })
+                .OrderByDescending(t => t.EndDate)
+                .ToListAsync();
+
+            return Ok(archivedTrips);
         }
 
         private async Task<TripDto> GetTripDto(int id)

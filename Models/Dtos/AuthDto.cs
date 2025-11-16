@@ -45,7 +45,14 @@ namespace TripExpenseApi.Models.Dtos
         public string Email { get; set; }
         public string Avatar { get; set; }
         public string Token { get; set; }
+        public string RefreshToken { get; set; }
         public DateTimeOffset ExpiresAt { get; set; }
+    }
+
+    public class RefreshTokenDto
+    {
+        [Required]
+        public string RefreshToken { get; set; }
     }
 
     public class ChangePasswordDto

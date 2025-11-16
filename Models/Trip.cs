@@ -21,9 +21,9 @@ namespace TripExpenseApi.Models
         [StringLength(1000)]
         public string Description { get; set; }
 
-        public DateTimeOffset StartDate { get; set; }
+        public DateTimeOffset? StartDate { get; set; }
 
-        public DateTimeOffset EndDate { get; set; }
+        public DateTimeOffset? EndDate { get; set; }
 
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
@@ -44,5 +44,7 @@ namespace TripExpenseApi.Models
         public DateTimeOffset? InviteTokenExpiry { get; set; }
 
         public bool IsInviteLinkActive { get; set; } = true;
+
+        public bool IsArchived { get; set; } = false;
     }
 }

@@ -15,7 +15,7 @@ namespace TripExpenseApi.Services
         string HashPassword(string password);
         bool VerifyPassword(string password, string passwordHash);
         string GenerateJwtToken(int userId, string email, string name);
-
+        string GenerateRefreshToken();
         int GetUserId();
     }
 
@@ -70,6 +70,14 @@ namespace TripExpenseApi.Services
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        public string GenerateRefreshToken()
+        {
+            var randomNumber = new byte[64];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+            return Convert.ToBase64String(randomNumber);
         }
 
         public int GetUserId()

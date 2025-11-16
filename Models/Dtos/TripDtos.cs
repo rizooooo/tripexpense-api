@@ -16,11 +16,9 @@ namespace TripExpenseApi.Models.Dtos
 
         public string Currency { get; set; }
 
-        [Required]
-        public DateTimeOffset StartDate { get; set; }
+        public DateTimeOffset? StartDate { get; set; }
 
-        [Required]
-        public DateTimeOffset EndDate { get; set; }
+        public DateTimeOffset? EndDate { get; set; }
 
         public List<int> MemberIds { get; set; } = new List<int>();
     }
