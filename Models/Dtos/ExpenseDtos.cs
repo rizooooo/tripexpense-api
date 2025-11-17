@@ -72,6 +72,7 @@ namespace TripExpenseApi.Models.Dtos
         public int UserId { get; set; }
         public string UserName { get; set; }
         public string UserAvatar { get; set; }
+        public bool IsArchived { get; set; }
         public int TripId { get; set; }
         public string TripName { get; set; }
         public string Currency { get; set; }

@@ -730,6 +730,7 @@ namespace TripExpenseApi.Controllers
                 UserAvatar = user.Avatar,
                 TripId = tripId,
                 TripName = trip.Name,
+                IsArchived = trip.IsArchived,
                 NetBalance = finalNetBalance,
                 Transactions = sortedTransactions,
             };

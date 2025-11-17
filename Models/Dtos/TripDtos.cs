@@ -29,8 +29,10 @@ namespace TripExpenseApi.Models.Dtos
         public string Name { get; set; }
         public string Description { get; set; }
         public string Currency { get; set; }
-        public DateTimeOffset StartDate { get; set; }
-        public DateTimeOffset EndDate { get; set; }
+
+        public bool IsArchived { get; set; }
+        public DateTimeOffset? StartDate { get; set; }
+        public DateTimeOffset? EndDate { get; set; }
         public int MemberCount { get; set; }
         public decimal TotalExpenses { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
@@ -81,8 +83,8 @@ namespace TripExpenseApi.Models.Dtos
         public int Id { get; set; }
         public string Name { get; set; }
         public string Currency { get; set; }
-        public DateTimeOffset StartDate { get; set; }
-        public DateTimeOffset EndDate { get; set; }
+        public DateTimeOffset? StartDate { get; set; }
+        public DateTimeOffset? EndDate { get; set; }
         public int MemberCount { get; set; }
         public decimal TotalExpenses { get; set; }
     }
@@ -97,12 +99,15 @@ namespace TripExpenseApi.Models.Dtos
         public string Name { get; set; }
         public string Description { get; set; }
         public string Currency { get; set; }
-        public DateTimeOffset StartDate { get; set; }
-        public DateTimeOffset EndDate { get; set; }
+        public DateTimeOffset? StartDate { get; set; }
+        public DateTimeOffset? EndDate { get; set; }
         public int MemberCount { get; set; }
         public decimal TotalSpent { get; set; }
         public decimal YourShare { get; set; }
         public decimal YourBalance { get; set; }
+
+
+        public bool IsArchived { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
         public List<TripMemberDto> Members { get; set; }
     }
@@ -111,8 +116,8 @@ namespace TripExpenseApi.Models.Dtos
     {
         public int Id { get; set; }
         public string Name { get; set; }
-        public DateTimeOffset StartDate { get; set; }
-        public DateTimeOffset EndDate { get; set; }
+        public DateTimeOffset? StartDate { get; set; }
+        public DateTimeOffset? EndDate { get; set; }
         public int MemberCount { get; set; }
         public decimal TotalExpenses { get; set; }
         public decimal YourBalance { get; set; }
@@ -148,8 +153,8 @@ namespace TripExpenseApi.Models.Dtos
         public int TripId { get; set; }
         public string TripName { get; set; }
         public string Description { get; set; }
-        public DateTimeOffset StartDate { get; set; }
-        public DateTimeOffset EndDate { get; set; }
+        public DateTimeOffset? StartDate { get; set; }
+        public DateTimeOffset? EndDate { get; set; }
         public int MemberCount { get; set; }
         public string CreatedByName { get; set; }
         public bool IsValid { get; set; }

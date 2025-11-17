@@ -90,6 +90,7 @@ namespace TripExpenseApi.Controllers
                 MemberCount = trip.Members.Count(m => m.IsActive),
                 TotalExpenses = trip.Expenses.Sum(e => e.Amount),
                 CreatedAt = trip.CreatedAt,
+                IsArchived = trip.IsArchived,
                 Members = trip
                     .Members.Where(m => m.IsActive)
                     .Select(m => new TripMemberDto
@@ -332,6 +333,7 @@ namespace TripExpenseApi.Controllers
                 Id = trip.Id,
                 Name = trip.Name,
                 Currency = trip.Currency,
+                IsArchived = trip.IsArchived,
                 Description = trip.Description,
                 StartDate = trip.StartDate,
                 EndDate = trip.EndDate,
@@ -738,14 +740,11 @@ namespace TripExpenseApi.Controllers
         public async Task<ActionResult<IEnumerable<TripSummaryDto>>> GetArchivedTrips()
         {
             var userId = _authService.GetUserId();
-            
+
             var archivedTrips = await _context
                 .Trips.Include(t => t.Members)
                 .Include(t => t.Expenses)
-                .Where(t =>
-                    t.Members.Any(m => m.UserId == userId && m.IsActive)
-                    && t.IsArchived
-                )
+                .Where(t => t.Members.Any(m => m.UserId == userId && m.IsActive) && t.IsArchived)
                 .Select(t => new TripSummaryDto
                 {
                     Id = t.Id,
