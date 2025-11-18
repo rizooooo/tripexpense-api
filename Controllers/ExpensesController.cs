@@ -724,6 +724,7 @@ namespace TripExpenseApi.Controllers
                 UserAvatar = user.Avatar,
                 TripId = tripId,
                 TripName = trip.Name,
+                Currency = trip.Currency,
                 IsArchived = trip.IsArchived,
                 NetBalance = finalNetBalance,
                 Transactions = sortedTransactions,
