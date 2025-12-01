@@ -582,7 +582,8 @@ namespace TripExpenseApi.Controllers
         public async Task<ActionResult<MemberExpenseBreakdownDto>> GetMemberExpenseBreakdown(
             int userId,
             int tripId,
-            [FromQuery] bool myExpensesOnly = false
+            [FromQuery] bool myExpensesOnly = false,
+            [FromQuery] bool filterByViewer = false // <--- NEW TOGGLE PARAM
         )
         {
             var user = await _context.Users.FindAsync(userId);
@@ -600,110 +601,200 @@ namespace TripExpenseApi.Controllers
             if (trip == null)
                 return NotFound("Trip not found");
 
-            var settlements = await _context
-                .Settlements.Include(s => s.FromUser)
-                .Include(s => s.ToUser)
-                .Where(s => s.TripId == tripId && (s.FromUserId == userId || s.ToUserId == userId))
-                .ToListAsync();
+            // Grab the logged-in user ID from your service
+            var viewerId = _authService.GetUserId();
 
             var allTransactions = new List<RunningTransactionItemDto>();
 
-            // Filter expenses based on myExpensesOnly parameter
-            var relevantExpenses = myExpensesOnly
-                ? trip.Expenses.Where(e => e.PaidByUserId == userId).ToList()
-                : trip
+            // ===========================================================================
+            // LOGIC PATH 1: BILATERAL (Target Member vs Logged In Viewer)
+            // ===========================================================================
+            if (filterByViewer)
+            {
+                // 1. Expenses: Only strictly between Target (userId) and Viewer (viewerId)
+                var relevantExpenses = trip
                     .Expenses.Where(e =>
-                        e.Splits.Any(s => s.UserId == userId) || e.PaidByUserId == userId
+                        (e.PaidByUserId == userId && e.Splits.Any(s => s.UserId == viewerId))
+                        || (e.PaidByUserId == viewerId && e.Splits.Any(s => s.UserId == userId))
                     )
                     .ToList();
 
-            foreach (var expense in relevantExpenses)
-            {
-                var userSplit = expense.Splits.FirstOrDefault(s => s.UserId == userId);
-                var userOwes = userSplit?.Amount ?? 0;
-                var userPaid = expense.PaidByUserId == userId ? expense.Amount : 0;
-                var netAmount = myExpensesOnly ? expense.Amount : (userPaid - userOwes);
-
-                string description = expense.Description;
-                string additionalInfo = "";
-
-                if (expense.SplitType == "PaidFor")
+                foreach (var expense in relevantExpenses)
                 {
+                    decimal netAmount = 0;
+                    string note = "";
+
+                    // Scenario A: Target Paid (User), Viewer Owes
                     if (expense.PaidByUserId == userId)
                     {
-                        var paidForUsers = expense.Splits.Select(s => s.User.Name).ToList();
-                        if (paidForUsers.Any())
+                        var viewerSplit = expense.Splits.FirstOrDefault(s => s.UserId == viewerId);
+                        if (viewerSplit != null)
                         {
-                            additionalInfo = $"Paid for: {string.Join(", ", paidForUsers)}";
+                            // Target paid for Viewer. Target is "Positive" (Owed money).
+                            netAmount = viewerSplit.Amount;
+                            note = $"They paid for you";
                         }
                     }
-                    else
+                    // Scenario B: Viewer Paid, Target (User) Owes
+                    else if (expense.PaidByUserId == viewerId)
                     {
-                        additionalInfo = $"{expense.PaidBy.Name} paid for you";
+                        var targetSplit = expense.Splits.FirstOrDefault(s => s.UserId == userId);
+                        if (targetSplit != null)
+                        {
+                            // Viewer paid for Target. Target is "Negative" (Owes money).
+                            netAmount = -targetSplit.Amount;
+                            note = $"You paid for them";
+                        }
+                    }
+
+                    if (netAmount != 0)
+                    {
+                        allTransactions.Add(
+                            new RunningTransactionItemDto
+                            {
+                                Date = expense.CreatedAt,
+                                Description = expense.Description,
+                                Type = "Expense",
+                                Amount = netAmount,
+                                TransactionId = expense.Id,
+                                ExpenseId = expense.Id,
+                                PaidByName = expense.PaidBy.Name,
+                                TotalExpenseAmount = expense.Amount,
+                                IsUserPayer = expense.PaidByUserId == userId,
+                                Notes = note,
+                            }
+                        );
                     }
                 }
 
-                var transaction = new RunningTransactionItemDto
+                // 2. Settlements: Only strictly between Target and Viewer
+                var relevantSettlements = await _context
+                    .Settlements.Include(s => s.FromUser)
+                    .Include(s => s.ToUser)
+                    .Where(s =>
+                        s.TripId == tripId
+                        && (
+                            (s.FromUserId == userId && s.ToUserId == viewerId)
+                            || (s.FromUserId == viewerId && s.ToUserId == userId)
+                        )
+                    )
+                    .ToListAsync();
+
+                foreach (var settlement in relevantSettlements)
                 {
-                    Date = expense.CreatedAt,
-                    Description = expense.Description,
-                    Type = "Expense",
-                    Amount = netAmount,
-                    TransactionId = expense.Id,
-                    ExpenseId = expense.Id,
-                    PaidByName = expense.PaidBy.Name,
-                    TotalExpenseAmount = expense.Amount,
-                    IsUserPayer = expense.PaidByUserId == userId,
-                    Notes = additionalInfo,
-                    SettlementId = null,
-                    FromUserName = null,
-                    ToUserName = null,
-                };
+                    // If Target pays Viewer: Target Balance increases (Debt reduces). +Amount.
+                    // If Viewer pays Target: Target Balance decreases (Debt increases). -Amount.
+                    bool targetIsPayer = settlement.FromUserId == userId;
+                    decimal amount = targetIsPayer ? settlement.Amount : -settlement.Amount;
 
-                allTransactions.Add(transaction);
+                    allTransactions.Add(
+                        new RunningTransactionItemDto
+                        {
+                            Date = settlement.SettlementDate,
+                            Description = targetIsPayer ? "Payment to You" : "Payment from You",
+                            Type = targetIsPayer ? "Payment" : "Receipt",
+                            Amount = amount,
+                            TransactionId = settlement.Id,
+                            SettlementId = settlement.Id,
+                            FromUserName = settlement.FromUser.Name,
+                            ToUserName = settlement.ToUser.Name,
+                            Notes = settlement.Notes,
+                            IsUserPayer = targetIsPayer,
+                        }
+                    );
+                }
             }
-
-            // Include settlements - for myExpensesOnly, only include payments FROM the user
-            var relevantSettlements = myExpensesOnly
-                ? settlements.Where(s => s.FromUserId == userId).ToList()
-                : settlements;
-
-            foreach (var settlement in relevantSettlements)
+            // ===========================================================================
+            // LOGIC PATH 2: GLOBAL (Target Member vs Everyone) - OLD LOGIC
+            // ===========================================================================
+            else
             {
-                bool isUserPaying = settlement.FromUserId == userId;
-                var amount = isUserPaying ? settlement.Amount : -settlement.Amount;
+                var settlements = await _context
+                    .Settlements.Include(s => s.FromUser)
+                    .Include(s => s.ToUser)
+                    .Where(s =>
+                        s.TripId == tripId && (s.FromUserId == userId || s.ToUserId == userId)
+                    )
+                    .ToListAsync();
 
-                var transaction = new RunningTransactionItemDto
+                var relevantExpenses = myExpensesOnly
+                    ? trip.Expenses.Where(e => e.PaidByUserId == userId).ToList()
+                    : trip
+                        .Expenses.Where(e =>
+                            e.Splits.Any(s => s.UserId == userId) || e.PaidByUserId == userId
+                        )
+                        .ToList();
+
+                foreach (var expense in relevantExpenses)
                 {
-                    Date = settlement.SettlementDate,
-                    Description = isUserPaying
-                        ? $"Payment to {settlement.ToUser.Name}"
-                        : $"Payment from {settlement.FromUser.Name}",
-                    Type = isUserPaying ? "Payment" : "Receipt",
-                    Amount = myExpensesOnly ? settlement.Amount : amount,
-                    TransactionId = settlement.Id,
-                    SettlementId = settlement.Id,
-                    FromUserName = settlement.FromUser.Name,
-                    ToUserName = settlement.ToUser.Name,
-                    Notes = settlement.Notes,
-                    ExpenseId = null,
-                    PaidByName = null,
-                    TotalExpenseAmount = settlement.Amount,
-                    IsUserPayer = isUserPaying,
-                };
+                    var userSplit = expense.Splits.FirstOrDefault(s => s.UserId == userId);
+                    var userOwes = userSplit?.Amount ?? 0;
+                    var userPaid = expense.PaidByUserId == userId ? expense.Amount : 0;
+                    var netAmount = myExpensesOnly ? expense.Amount : (userPaid - userOwes);
 
-                allTransactions.Add(transaction);
+                    string additionalInfo = "";
+                    if (expense.SplitType == "PaidFor")
+                    {
+                        additionalInfo =
+                            expense.PaidByUserId == userId
+                                ? $"Paid for: {string.Join(", ", expense.Splits.Select(s => s.User.Name))}"
+                                : $"{expense.PaidBy.Name} paid for you";
+                    }
+
+                    allTransactions.Add(
+                        new RunningTransactionItemDto
+                        {
+                            Date = expense.CreatedAt,
+                            Description = expense.Description,
+                            Type = "Expense",
+                            Amount = netAmount,
+                            TransactionId = expense.Id,
+                            ExpenseId = expense.Id,
+                            PaidByName = expense.PaidBy.Name,
+                            TotalExpenseAmount = expense.Amount,
+                            IsUserPayer = expense.PaidByUserId == userId,
+                            Notes = additionalInfo,
+                        }
+                    );
+                }
+
+                var relevantSettlements = myExpensesOnly
+                    ? settlements.Where(s => s.FromUserId == userId).ToList()
+                    : settlements;
+
+                foreach (var settlement in relevantSettlements)
+                {
+                    bool isUserPaying = settlement.FromUserId == userId;
+                    var amount = isUserPaying ? settlement.Amount : -settlement.Amount;
+
+                    allTransactions.Add(
+                        new RunningTransactionItemDto
+                        {
+                            Date = settlement.SettlementDate,
+                            Description = isUserPaying
+                                ? $"Payment to {settlement.ToUser.Name}"
+                                : $"Payment from {settlement.FromUser.Name}",
+                            Type = isUserPaying ? "Payment" : "Receipt",
+                            Amount = myExpensesOnly ? settlement.Amount : amount,
+                            TransactionId = settlement.Id,
+                            SettlementId = settlement.Id,
+                            FromUserName = settlement.FromUser.Name,
+                            ToUserName = settlement.ToUser.Name,
+                            Notes = settlement.Notes,
+                            IsUserPayer = isUserPaying,
+                        }
+                    );
+                }
             }
 
+            // Shared Sorting & Running Balance Logic
             var sortedTransactions = allTransactions
                 .OrderByDescending(t => t.Date)
                 .ThenByDescending(t =>
-                {
-                    if (t.Type == "Payment" || t.Type == "Receipt")
-                        return (t.SettlementId ?? 0) + 1000000;
-                    else
-                        return t.ExpenseId ?? 0;
-                })
+                    (t.Type == "Payment" || t.Type == "Receipt")
+                        ? (t.SettlementId ?? 0) + 1000000
+                        : t.ExpenseId ?? 0
+                )
                 .ToList();
 
             var transactionsOldestFirst = sortedTransactions.AsEnumerable().Reverse().ToList();
@@ -715,22 +806,19 @@ namespace TripExpenseApi.Controllers
                 transaction.RunningBalance = runningBalance;
             }
 
-            var finalNetBalance = runningBalance;
-
-            var breakdown = new MemberExpenseBreakdownDto
-            {
-                UserId = userId,
-                UserName = user.Name,
-                UserAvatar = user.Avatar,
-                TripId = tripId,
-                TripName = trip.Name,
-                Currency = trip.Currency,
-                IsArchived = trip.IsArchived,
-                NetBalance = finalNetBalance,
-                Transactions = sortedTransactions,
-            };
-
-            return Ok(breakdown);
+            return Ok(
+                new MemberExpenseBreakdownDto
+                {
+                    UserId = userId,
+                    UserName = user.Name,
+                    UserAvatar = user.Avatar,
+                    TripId = tripId,
+                    TripName = trip.Name,
+                    IsArchived = trip.IsArchived,
+                    NetBalance = runningBalance,
+                    Transactions = sortedTransactions,
+                }
+            );
         }
 
         // ============================================
