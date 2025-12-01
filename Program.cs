@@ -75,13 +75,45 @@ builder.Services.AddHttpContextAccessor();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+// if (app.Environment.IsDevelopment())
+// {
+//     app.MapOpenApi();
+// }
+
+var swaggerPassword = builder.Configuration["SwaggerPassword"];
+
+app.Use(
+    async (context, next) =>
+    {
+        if (
+            context.Request.Path.StartsWithSegments("/swagger")
+            || context.Request.Path.StartsWithSegments("/swagger/v1/swagger.json")
+        )
+        {
+            // Allow in Development
+            if (app.Environment.IsDevelopment())
+            {
+                await next();
+                return;
+            }
+
+            // Check query password
+            var pwd = context.Request.Query["password"].ToString();
+            if (string.IsNullOrEmpty(swaggerPassword) || pwd != swaggerPassword)
+            {
+                context.Response.StatusCode = 401;
+                await context.Response.WriteAsync("Unauthorized");
+                return;
+            }
+        }
+
+        await next();
+    }
+);
 
 app.UseSwagger();
 app.UseSwaggerUI();
+app.MapOpenApi();
 
 app.UseHttpsRedirection();
 
